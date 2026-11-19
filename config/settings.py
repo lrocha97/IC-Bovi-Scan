@@ -59,13 +59,35 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 # Configuração de Banco de Dados
-# Padrão: SQLite local. Pode ser estendido para PostgreSQL/MySQL via DATABASE_URL
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# Padrão: SQLite local. Suporta PostgreSQL ou MySQL se DATABASE_URL estiver presente no .env
+DATABASE_URL = config('DATABASE_URL', default=None)
+
+if DATABASE_URL:
+    from urllib.parse import urlparse
+    parsed_db_url = urlparse(DATABASE_URL)
+    engine_map = {
+        'postgres': 'django.db.backends.postgresql',
+        'postgresql': 'django.db.backends.postgresql',
+        'mysql': 'django.db.backends.mysql',
+        'sqlite': 'django.db.backends.sqlite3',
     }
-}
+    DATABASES = {
+        'default': {
+            'ENGINE': engine_map.get(parsed_db_url.scheme, 'django.db.backends.sqlite3'),
+            'NAME': parsed_db_url.path.lstrip('/') if parsed_db_url.path else '',
+            'USER': parsed_db_url.username or '',
+            'PASSWORD': parsed_db_url.password or '',
+            'HOST': parsed_db_url.hostname or '',
+            'PORT': parsed_db_url.port or '',
+        }
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 # Validadores de senha
 AUTH_PASSWORD_VALIDATORS = [

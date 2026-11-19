@@ -143,11 +143,11 @@ python manage.py test
   - Padronização do `requirements.txt`.
   - Configuração do `settings.py` com suporte a arquivos de mídia (`media/`) e documentação Swagger (`drf-spectacular`).
   - Criação do `README.md` e `.env.example`.
-- [ ] **Passo 2: Modelagem de Dados e Persistência (`BovineAnalysis`)**
+- [x] **Passo 2: Modelagem de Dados e Persistência (`BovineAnalysis`)**
   - Criação da entidade de histórico no `core/models.py`.
   - Configuração do painel administrativo no `core/admin.py`.
   - Preparação para chaveamento entre SQLite e PostgreSQL via variáveis de ambiente.
-  - Testes automatizados do modelo.
+  - Testes automatizados do modelo executados com sucesso (`Ran 2 tests ... OK`).
 - [ ] **Passo 3: Pipeline de Inferência de Inteligência Artificial**
   - Implementação do Singleton para carregamento dos modelos Keras em memória (`core/services/model_loader.py`).
   - Pipeline de pré-processamento de imagem (`core/services/image_processor.py`).
