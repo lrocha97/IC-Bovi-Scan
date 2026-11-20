@@ -13,7 +13,7 @@ from django.core.files.base import ContentFile
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
@@ -38,8 +38,18 @@ class BovineAnalysisAPIView(APIView):
     """
 
     parser_classes = [MultiPartParser]
-    permission_classes = [AllowAny]
     throttle_classes = [AnonRateThrottle]
+
+    def get_permissions(self):
+        """
+        Retorna as classes de permissão ativas para o endpoint de inferência.
+
+        Permite acesso público por padrão para ambiente de desenvolvimento/pesquisa da IC.
+        Exige autenticação (IsAuthenticated) caso REQUIRE_AUTH_FOR_INFERENCE=True no .env.
+        """
+        if getattr(settings, 'REQUIRE_AUTH_FOR_INFERENCE', False):
+            return [IsAuthenticated()]
+        return [AllowAny()]
 
     @extend_schema(
         summary="Análise biométrica e pesagem de bovino",

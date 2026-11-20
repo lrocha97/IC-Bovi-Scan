@@ -15,9 +15,19 @@ from .models import BovineAnalysis
 class UploadedImageField(serializers.ImageField):
     """
     Campo customizado de upload de imagem.
-    Força a anotação OpenAPI como tipo 'binary' para habilitar o seletor de arquivos no Swagger UI.
+    Força a anotação OpenAPI como tipo 'binary' para habilitar o seletor de arquivos no Swagger UI
+    e valida o limite de tamanho do arquivo antes da decodificação.
     """
-    pass
+
+    def to_internal_value(self, data):
+        from django.conf import settings
+        max_size = getattr(settings, 'MAX_IMAGE_UPLOAD_SIZE', 10 * 1024 * 1024)
+        if hasattr(data, 'size') and data.size > max_size:
+            max_mb = max_size / (1024 * 1024)
+            raise serializers.ValidationError(
+                f"O tamanho da imagem excede o limite máximo permitido de {max_mb:.0f} MB."
+            )
+        return super().to_internal_value(data)
 
 
 class BovineAnalysisRequestSerializer(serializers.Serializer):

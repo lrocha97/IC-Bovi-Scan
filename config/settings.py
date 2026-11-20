@@ -79,9 +79,16 @@ if DATABASE_URL:
         'mysql': 'django.db.backends.mysql',
         'sqlite': 'django.db.backends.sqlite3',
     }
+    scheme = (parsed_db_url.scheme or '').lower()
+    if scheme not in engine_map:
+        raise ValueError(
+            f"Esquema de banco de dados não suportado na DATABASE_URL: '{scheme}'. "
+            f"Esquemas válidos são: {', '.join(sorted(engine_map.keys()))}."
+        )
+
     DATABASES = {
         'default': {
-            'ENGINE': engine_map.get(parsed_db_url.scheme, 'django.db.backends.sqlite3'),
+            'ENGINE': engine_map[scheme],
             'NAME': parsed_db_url.path.lstrip('/') if parsed_db_url.path else '',
             'USER': parsed_db_url.username or '',
             'PASSWORD': parsed_db_url.password or '',
@@ -129,9 +136,13 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.AnonRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '60/minute',
+        'anon': '20/minute',
     },
 }
+
+# Políticas de Segurança e Limites de Recursos para Inferência
+MAX_IMAGE_UPLOAD_SIZE = 10 * 1024 * 1024  # Limite máximo de 10 MB por upload
+REQUIRE_AUTH_FOR_INFERENCE = config('REQUIRE_AUTH_FOR_INFERENCE', default=False, cast=bool)
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'BoviScan API',

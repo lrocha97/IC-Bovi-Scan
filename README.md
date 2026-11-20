@@ -1,4 +1,4 @@
-# IC-Bovi-Scan 🐄📸
+# IC-Bovi-Scan
 
 **Sistema Inteligente de Análise Biométrica e Estimativa de Peso Corporal Bovino por Visão Computacional**
 
@@ -6,7 +6,7 @@ Projeto desenvolvido no âmbito de Iniciação Científica (IC). O objetivo é f
 
 ---
 
-## 🧠 Modelos de Inteligência Artificial
+## Modelos de Inteligência Artificial
 
 Os modelos treinados encontram-se no diretório `modelos/` e são versionados com **Git LFS**:
 
@@ -26,7 +26,7 @@ Os modelos treinados encontram-se no diretório `modelos/` e são versionados co
 
 ---
 
-## 📐 Padrões e Convenções do Código
+## Padrões e Convenções do Código
 
 Para manter a organização, legibilidade e compatibilidade em ambientes corporativos e acadêmicos:
 - **Código (Identificadores, Variáveis, Métodos, Classes e URLs):** Totalmente em **Inglês** (ex: `BovineAnalysis`, `predict_weight()`, `/api/v1/cattle/analyze/`).
@@ -35,7 +35,7 @@ Para manter a organização, legibilidade e compatibilidade em ambientes corpora
 
 ---
 
-## 📁 Estrutura do Projeto
+## Estrutura do Projeto
 
 ```text
 IC-Bovi-Scan/
@@ -52,7 +52,7 @@ IC-Bovi-Scan/
 │   ├── api_views.py         # Endpoints da API REST
 │   ├── models.py            # Entidade de persistência (BovineAnalysis)
 │   ├── serializers.py       # Serializadores do Django REST Framework (Swagger Binary)
-│   ├── tests.py             # Suíte completa de testes automatizados (9 testes)
+│   ├── tests.py             # Suíte completa de testes automatizados (10 testes)
 │   ├── urls.py              # Rotas internas do app core
 │   └── views.py             # Views para renderização de páginas
 ├── media/                   # Diretório de armazenamento de uploads e máscaras (ignorado no git)
@@ -67,7 +67,7 @@ IC-Bovi-Scan/
 
 ---
 
-## 🚀 Guia de Instalação e Execução
+## Guia de Instalação e Execução
 
 ### Pré-requisitos
 - **Python 3.10+** (Recomendado: Python 3.11)
@@ -125,7 +125,7 @@ O servidor estará acessível em: `http://127.0.0.1:8000/`.
 
 ---
 
-## 📖 Documentação da API REST
+## Documentação da API REST
 
 A API do BoviScan permite submeter imagens de perfil lateral de bovinos e receber a estimativa biométrica completa.
 
@@ -164,11 +164,11 @@ curl -X POST "http://127.0.0.1:8000/api/v1/cattle/analyze/" \
 
 ---
 
-## 🖥️ Testando via Swagger UI e Painel Administrativo
+## Testando via Swagger UI e Painel Administrativo
 
 ### 1. Documentação Interativa (Swagger)
 Acesse pelo navegador:
-👉 **[http://127.0.0.1:8000/api/docs/](http://127.0.0.1:8000/api/docs/)**
+- [http://127.0.0.1:8000/api/docs/](http://127.0.0.1:8000/api/docs/)
 - Expanda a rota `POST /api/v1/cattle/analyze/`.
 - Clique em **"Try it out"**.
 - O campo `image` possui um botão para anexar o arquivo diretamente da galeria/computador.
@@ -176,7 +176,7 @@ Acesse pelo navegador:
 
 ### 2. Painel Administrativo Django
 Acesse pelo navegador:
-👉 **[http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/)**
+- [http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/)
 - Todas as análises realizadas ficam salvas na tabela **Análises Bovinas**.
 - Exibe miniaturas lado a lado da foto original e da máscara calculada.
 - Para criar novos administradores via linha de comando:
@@ -186,16 +186,16 @@ Acesse pelo navegador:
 
 ---
 
-## 🧪 Execução dos Testes Automatizados
+## Execução dos Testes Automatizados
 
-O projeto conta com uma suíte de 9 testes automatizados cobrindo persistência no banco, pré-processamento de imagem, inferência de IA com modelo real e integração da API REST:
+O projeto conta com uma suíte de 10 testes automatizados cobrindo persistência no banco, pré-processamento de imagem, inferência de IA com modelo real e integração da API REST:
 ```bash
 python manage.py test
 ```
 
 ---
 
-## 🗺️ Roteiro de Implementação (Roadmap)
+## Roteiro de Implementação (Roadmap)
 
 - [x] **Passo 1: Dependências, Estrutura Base e Documentação**
   - Padronização do `requirements.txt`.
@@ -214,7 +214,7 @@ python manage.py test
 - [x] **Passo 4: Endpoint REST e Documentação Interativa (Swagger)**
   - Criação do endpoint `POST /api/v1/cattle/analyze/` ([core/api_views.py](core/api_views.py)).
   - Serialização completa com suporte a upload multipart (`format: binary`), persistência no banco e retorno com imagens em Base64 e URLs de mídia.
-  - Testes de integração via `APIClient` e validação do esquema OpenAPI 3.0.3 (9 testes executados com status `OK`).
+  - Testes de integração via `APIClient` e validação do esquema OpenAPI 3.0.3 (10 testes executados com status `OK`).
 - [x] **Passo 5: Conclusão, Ajustes Finais e Documentação de Uso**
   - Documentação completa da API com exemplos práticos (cURL e JSON).
   - Guia de utilização do Swagger UI e visualização de miniaturas no Django Admin.

@@ -192,6 +192,19 @@ class BovineAnalysisAPITestCase(TestCase):
         response = self.client.post(self.url, data={'image': text_file}, format='multipart')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_api_oversized_image(self):
+        """Verifica se o envio de uma imagem que excede o limite máximo (10 MB) retorna HTTP 400."""
+        oversized_content = b'x' * (11 * 1024 * 1024)
+        oversized_file = SimpleUploadedFile(
+            name='huge_bovine.png',
+            content=oversized_content,
+            content_type='image/png'
+        )
+        response = self.client.post(self.url, data={'image': oversized_file}, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('image', response.data)
+        self.assertIn('limite máximo permitido', str(response.data['image']))
+
     def test_api_successful_analysis(self):
         """
         Verifica o fluxo completo de upload via API com a foto boi1.png.
