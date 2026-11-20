@@ -12,8 +12,16 @@ from decouple import config, Csv
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Configurações de segurança via decouple (.env)
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-umtuy^xf)th8#sj8+*2&2473n5ko!%+w@b(3+ic1$e-khej^$7')
-DEBUG = config('DEBUG', default=True, cast=bool)
+# Padrão seguro: DEBUG falso por padrão (habilitável explicitamente via DEBUG=True no .env)
+DEBUG = config('DEBUG', default=False, cast=bool)
+
+# Em produção, a ausência de SECRET_KEY gera erro crítico. Em desenvolvimento (DEBUG=True),
+# permite uma chave de desenvolvimento caso o desenvolvedor ainda não tenha preenchido o .env.
+if DEBUG:
+    SECRET_KEY = config('SECRET_KEY', default='django-insecure-dev-key-do-not-use-in-production')
+else:
+    SECRET_KEY = config('SECRET_KEY')
+
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
 
 # Definição dos Aplicativos
@@ -117,6 +125,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Django REST Framework & Documentação OpenAPI
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '60/minute',
+    },
 }
 
 SPECTACULAR_SETTINGS = {

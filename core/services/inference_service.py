@@ -82,11 +82,21 @@ class BovineInferenceService:
         metrics = ImageProcessor.calculate_metrics(binary_mask)
 
         # 4. Construção do vetor de metadados para o regressor (shape [1, 3])
-        # Padrão: [fração da área da máscara, 0.0, 0.0]
-        meta_vector = np.array(
-            [[metrics['area_fraction'], 0.0, 0.0]],
-            dtype=np.float32
-        )
+        # Posição 0: Fração da área da máscara calculada pela UNet
+        # Posições 1 e 2: Atributos complementares (ex.: aspect ratio ou metadados customizados)
+        meta_features = [metrics['area_fraction'], 0.0, 0.0]
+
+        if custom_metadata:
+            if 'area_fraction' in custom_metadata:
+                meta_features[0] = float(custom_metadata['area_fraction'])
+            if 'aspect_ratio' in custom_metadata:
+                meta_features[1] = float(custom_metadata['aspect_ratio'])
+            elif 'feature_1' in custom_metadata:
+                meta_features[1] = float(custom_metadata['feature_1'])
+            if 'feature_2' in custom_metadata:
+                meta_features[2] = float(custom_metadata['feature_2'])
+
+        meta_vector = np.array([meta_features], dtype=np.float32)
 
         # 5. Inferência de Regressão de Peso (EfficientNetB0)
         weight_pred = reg_model.predict(
@@ -97,8 +107,15 @@ class BovineInferenceService:
         # Garante plausibilidade física (peso não negativo)
         estimated_weight = max(0.0, round(estimated_weight, 2))
 
-        # 6. Cálculo de confiança e imagens derivadas
-        confidence = 94.0 if metrics['area_percentage'] > 5.0 else 50.0
+        # 6. Cálculo de confiança baseado na certeza média da rede UNet e imagens derivadas
+        bovine_pixels = binary_mask > 0.5
+        if np.any(bovine_pixels):
+            raw_probabilities = raw_mask_pred.squeeze()
+            confidence = float(np.mean(raw_probabilities[bovine_pixels]) * 100.0)
+            confidence = round(confidence, 2)
+        else:
+            confidence = 0.0
+
         overlay_pil = ImageProcessor.create_mask_overlay(resized_pil, binary_mask)
         mask_base64 = ImageProcessor.to_base64_data_uri(mask_pil)
         overlay_base64 = ImageProcessor.to_base64_data_uri(overlay_pil)

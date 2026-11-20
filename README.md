@@ -207,12 +207,12 @@ python manage.py test
   - Preparação para chaveamento entre SQLite e PostgreSQL via variáveis de ambiente.
   - Testes automatizados do modelo executados com sucesso (`Ran 2 tests ... OK`).
 - [x] **Passo 3: Pipeline de Inferência de Inteligência Artificial**
-  - Implementação do Singleton para carregamento dos modelos Keras em memória ([core/services/model_loader.py](file:///c:/Users/lucas/Documents/GitHub/IC-Bovi-Scan/core/services/model_loader.py)).
-  - Pipeline de pré/pós-processamento e overlay de imagem ([core/services/image_processor.py](file:///c:/Users/lucas/Documents/GitHub/IC-Bovi-Scan/core/services/image_processor.py)).
-  - Módulo orquestrador de inferência biométrica ([core/services/inference_service.py](file:///c:/Users/lucas/Documents/GitHub/IC-Bovi-Scan/core/services/inference_service.py)).
+  - Implementação do Singleton para carregamento dos modelos Keras em memória ([core/services/model_loader.py](core/services/model_loader.py)).
+  - Pipeline de pré/pós-processamento e overlay de imagem ([core/services/image_processor.py](core/services/image_processor.py)).
+  - Módulo orquestrador de inferência biométrica ([core/services/inference_service.py](core/services/inference_service.py)).
   - Testes unitários com a imagem real de bovino (`boi1.png`) aprovados com 100% de sucesso.
 - [x] **Passo 4: Endpoint REST e Documentação Interativa (Swagger)**
-  - Criação do endpoint `POST /api/v1/cattle/analyze/` ([core/api_views.py](file:///c:/Users/lucas/Documents/GitHub/IC-Bovi-Scan/core/api_views.py)).
+  - Criação do endpoint `POST /api/v1/cattle/analyze/` ([core/api_views.py](core/api_views.py)).
   - Serialização completa com suporte a upload multipart (`format: binary`), persistência no banco e retorno com imagens em Base64 e URLs de mídia.
   - Testes de integração via `APIClient` e validação do esquema OpenAPI 3.0.3 (9 testes executados com status `OK`).
 - [x] **Passo 5: Conclusão, Ajustes Finais e Documentação de Uso**

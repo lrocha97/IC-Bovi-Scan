@@ -8,11 +8,14 @@ a camada de serviços de IA ao banco de dados e à documentação Swagger.
 import io
 import logging
 from decimal import Decimal
+from django.conf import settings
 from django.core.files.base import ContentFile
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
 from .models import BovineAnalysis
@@ -35,6 +38,8 @@ class BovineAnalysisAPIView(APIView):
     """
 
     parser_classes = [MultiPartParser]
+    permission_classes = [AllowAny]
+    throttle_classes = [AnonRateThrottle]
 
     @extend_schema(
         summary="Análise biométrica e pesagem de bovino",
@@ -100,7 +105,12 @@ class BovineAnalysisAPIView(APIView):
 
         except Exception as exc:
             logger.exception("Falha ao processar análise do bovino: %s", exc)
+            detail_msg = (
+                str(exc)
+                if settings.DEBUG
+                else "Ocorreu um erro interno durante o processamento da imagem. Consulte os logs do servidor."
+            )
             return Response(
-                {"error": "Falha no processamento da imagem pela IA.", "detail": str(exc)},
+                {"error": "Falha no processamento da imagem pela IA.", "detail": detail_msg},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )

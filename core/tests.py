@@ -151,9 +151,19 @@ class BovineInferenceServiceTestCase(TestCase):
         self.assertLess(result.estimated_weight_kg, 500.0)
         self.assertGreater(result.mask_area_percentage, 10.0)
         self.assertLess(result.mask_area_percentage, 60.0)
+        self.assertGreater(result.confidence_score, 70.0)
+        self.assertLessEqual(result.confidence_score, 100.0)
         self.assertGreater(result.inference_time_ms, 0)
         self.assertTrue(result.mask_base64.startswith('data:image/png;base64,'))
         self.assertTrue(result.overlay_base64.startswith('data:image/png;base64,'))
+
+        # Validação com custom_metadata fornecido
+        with open(image_path, 'rb') as img_file:
+            result_with_meta = service.run_pipeline(
+                img_file,
+                custom_metadata={'aspect_ratio': 1.15, 'feature_2': 0.1}
+            )
+        self.assertGreater(result_with_meta.estimated_weight_kg, 100.0)
 
 
 class BovineAnalysisAPITestCase(TestCase):
