@@ -19,7 +19,9 @@ Os modelos treinados encontram-se no diretório `modelos/` e são versionados co
 2. **Regressão de Peso (`best_transfer_reg_model.zip`)**:
    - **Arquitetura:** `EfficientNetB0_SideProfile_Regressor`
    - **Framework:** Keras 3 (TensorFlow backend)
-   - **Dimensão de Entrada:** `224 x 224 x 3` (RGB)
+   - **Dimensões de Entrada:** 
+     - Entrada Visual: `224 x 224 x 3` (RGB)
+     - Entrada de Metadados: vetor `[None, 3]` (contendo a fração da área da máscara calculada)
    - **Objetivo:** Predição contínua do peso vivo do bovino em kg.
 
 ---
@@ -41,13 +43,16 @@ IC-Bovi-Scan/
 ├── core/                    # Aplicativo principal
 │   ├── migrations/          # Histórico de migrações do banco de dados
 │   ├── services/            # Camada de serviços (Pipeline de IA, Pré/Pós-processamento)
+│   │   ├── image_processor.py   # Utilitários de imagem, redimensionamento e Base64
+│   │   ├── inference_service.py # Orquestrador da inferência ponta a ponta
+│   │   └── model_loader.py      # Gerenciador Singleton de modelos Keras em memória
 │   ├── static/core/         # Arquivos estáticos (mockup visual)
 │   ├── templates/core/      # Templates HTML (interface gráfica)
-│   ├── admin.py             # Configuração do Django Admin
+│   ├── admin.py             # Configuração do Django Admin (com visualização de miniaturas)
 │   ├── api_views.py         # Endpoints da API REST
-│   ├── models.py            # Entidades do Banco de Dados (BovineAnalysis)
-│   ├── serializers.py       # Serializadores do Django REST Framework
-│   ├── tests.py             # Testes automatizados (Unitários e Integração)
+│   ├── models.py            # Entidade de persistência (BovineAnalysis)
+│   ├── serializers.py       # Serializadores do Django REST Framework (Swagger Binary)
+│   ├── tests.py             # Suíte completa de testes automatizados (9 testes)
 │   ├── urls.py              # Rotas internas do app core
 │   └── views.py             # Views para renderização de páginas
 ├── media/                   # Diretório de armazenamento de uploads e máscaras (ignorado no git)
@@ -120,17 +125,70 @@ O servidor estará acessível em: `http://127.0.0.1:8000/`.
 
 ---
 
-## 📖 Documentação da API (Swagger / OpenAPI 3)
+## 📖 Documentação da API REST
 
-Com o servidor em execução, acesse a documentação interativa para testar os endpoints e inspecionar os esquemas de dados:
-- **Swagger UI:** [http://127.0.0.1:8000/api/docs/](http://127.0.0.1:8000/api/docs/)
-- **Schema OpenAPI (YAML/JSON):** [http://127.0.0.1:8000/api/schema/](http://127.0.0.1:8000/api/schema/)
+A API do BoviScan permite submeter imagens de perfil lateral de bovinos e receber a estimativa biométrica completa.
+
+### Endpoint Principal
+`POST /api/v1/cattle/analyze/`
+
+- **Tipo de Requisição:** `multipart/form-data`
+- **Parâmetros:**
+  - `image` *(obrigatório)*: Arquivo de imagem do bovino (formatos: JPEG, PNG, WebP).
+
+### Exemplo de Requisição via cURL
+```bash
+curl -X POST "http://127.0.0.1:8000/api/v1/cattle/analyze/" \
+     -H "accept: application/json" \
+     -H "Content-Type: multipart/form-data" \
+     -F "image=@boi1.png"
+```
+
+### Exemplo de Resposta (HTTP 201 Created)
+```json
+{
+  "id": 1,
+  "uuid": "7a3e819b-21d4-4a25-97fc-7d63259ce361",
+  "estimated_weight": "208.81",
+  "mask_area_percentage": 36.16,
+  "confidence_score": 94.0,
+  "inference_time_ms": 348,
+  "original_image": "/media/bovines/original/2026/11/20/boi1.png",
+  "mask_image": "/media/bovines/masks/2026/11/20/mask_boi1.png",
+  "mask_base64": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA...",
+  "overlay_base64": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg...",
+  "device_used": "CPU (Sem GPU dedicada detectada - executando via processador)",
+  "created_at": "2026-11-20T10:45:00.123456Z"
+}
+```
+
+---
+
+## 🖥️ Testando via Swagger UI e Painel Administrativo
+
+### 1. Documentação Interativa (Swagger)
+Acesse pelo navegador:
+👉 **[http://127.0.0.1:8000/api/docs/](http://127.0.0.1:8000/api/docs/)**
+- Expanda a rota `POST /api/v1/cattle/analyze/`.
+- Clique em **"Try it out"**.
+- O campo `image` possui um botão para anexar o arquivo diretamente da galeria/computador.
+- Clique em **"Execute"** para inspecionar os retornos numéricos e as imagens.
+
+### 2. Painel Administrativo Django
+Acesse pelo navegador:
+👉 **[http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/)**
+- Todas as análises realizadas ficam salvas na tabela **Análises Bovinas**.
+- Exibe miniaturas lado a lado da foto original e da máscara calculada.
+- Para criar novos administradores via linha de comando:
+  ```bash
+  python manage.py createsuperuser
+  ```
 
 ---
 
 ## 🧪 Execução dos Testes Automatizados
 
-Para rodar todos os testes de validação das camadas de IA, persistência e API:
+O projeto conta com uma suíte de 9 testes automatizados cobrindo persistência no banco, pré-processamento de imagem, inferência de IA com modelo real e integração da API REST:
 ```bash
 python manage.py test
 ```
@@ -155,6 +213,10 @@ python manage.py test
   - Testes unitários com a imagem real de bovino (`boi1.png`) aprovados com 100% de sucesso.
 - [x] **Passo 4: Endpoint REST e Documentação Interativa (Swagger)**
   - Criação do endpoint `POST /api/v1/cattle/analyze/` ([core/api_views.py](file:///c:/Users/lucas/Documents/GitHub/IC-Bovi-Scan/core/api_views.py)).
-  - Serialização completa com suporte a upload multipart, persistência no banco e retorno com imagens em Base64 e URLs de mídia.
+  - Serialização completa com suporte a upload multipart (`format: binary`), persistência no banco e retorno com imagens em Base64 e URLs de mídia.
   - Testes de integração via `APIClient` e validação do esquema OpenAPI 3.0.3 (9 testes executados com status `OK`).
-- [ ] **Passo 5: Conclusão, Ajustes Finais e Documentação de Uso**
+- [x] **Passo 5: Conclusão, Ajustes Finais e Documentação de Uso**
+  - Documentação completa da API com exemplos práticos (cURL e JSON).
+  - Guia de utilização do Swagger UI e visualização de miniaturas no Django Admin.
+  - Higienização e revisão de conformidade PEP 8 em todos os módulos.
+  - Quality Gate final com 100% dos testes unitários e de integração aprovados.
