@@ -1,16 +1,24 @@
 """
 Testes automatizados para o aplicativo core (IC-Bovi-Scan).
 
-Valida os modelos de dados, persistência no banco, propriedades calculadas
-e integridade dos campos da entidade BovineAnalysis.
+Valida os modelos de dados, persistência no banco, propriedades calculadas,
+processamento de imagens, pipeline de inferência de IA e endpoints da API REST.
 """
 
 import io
 from decimal import Decimal
+from pathlib import Path
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
+from django.urls import reverse
+import numpy as np
 from PIL import Image
+from rest_framework import status
+from rest_framework.test import APIClient
+
 from .models import BovineAnalysis
+from .services.image_processor import ImageProcessor
+from .services.inference_service import BovineInferenceService
 
 
 class BovineAnalysisModelTestCase(TestCase):
@@ -79,3 +87,135 @@ class BovineAnalysisModelTestCase(TestCase):
         self.assertEqual(analysis.mask_area_percentage, 26.35)
         self.assertEqual(analysis.inference_time_ms, 320)
         self.assertIn("226.5 kg", str(analysis))
+
+
+class ImageProcessorTestCase(TestCase):
+    """
+    Testes para as operações de pré/pós-processamento de imagens e métricas de máscara.
+    """
+
+    def setUp(self):
+        """Cria imagem básica para testes de utilitários."""
+        self.test_img = Image.new('RGB', (100, 100), color='blue')
+        stream = io.BytesIO()
+        self.test_img.save(stream, format='PNG')
+        self.test_bytes = stream.getvalue()
+
+    def test_load_and_preprocess(self):
+        """Verifica a conversão para RGB e tensor com dimensões (1, 224, 224, 3)."""
+        tensor, pil_img = ImageProcessor.load_and_preprocess(self.test_bytes)
+        self.assertEqual(tensor.shape, (1, 224, 224, 3))
+        self.assertEqual(pil_img.size, (224, 224))
+        self.assertEqual(tensor.dtype, np.float32)
+
+    def test_calculate_metrics(self):
+        """Verifica o cálculo de área percentual e proporção de aspecto em máscara conhecida."""
+        mask = np.zeros((224, 224), dtype=np.float32)
+        # Preenche um quadrado de 112x112 (exatamente 25% da área total)
+        mask[0:112, 0:112] = 1.0
+
+        metrics = ImageProcessor.calculate_metrics(mask)
+        self.assertAlmostEqual(metrics['area_percentage'], 25.0, places=1)
+        self.assertAlmostEqual(metrics['aspect_ratio'], 1.0, places=1)
+
+    def test_to_base64_data_uri(self):
+        """Verifica a geração de string Data URI Base64 válida."""
+        data_uri = ImageProcessor.to_base64_data_uri(self.test_img)
+        self.assertTrue(data_uri.startswith('data:image/png;base64,'))
+        self.assertGreater(len(data_uri), 50)
+
+
+class BovineInferenceServiceTestCase(TestCase):
+    """
+    Testes de integração para a pipeline completa de Inteligência Artificial.
+    Executa a inferência nos modelos Keras reais utilizando a imagem boi1.png.
+    """
+
+    def test_run_pipeline_with_real_bovine_image(self):
+        """
+        Executa a pipeline completa na imagem de teste real (boi1.png).
+        Valida que o peso estimado é positivo e plausível, e a máscara foi gerada.
+        """
+        base_dir = Path(__file__).resolve().parent.parent
+        image_path = base_dir / 'boi1.png'
+
+        if not image_path.exists():
+            self.skipTest("Arquivo boi1.png não encontrado para teste de integração.")
+
+        with open(image_path, 'rb') as img_file:
+            service = BovineInferenceService()
+            result = service.run_pipeline(img_file)
+
+        # Validações dos resultados biométricos
+        self.assertGreater(result.estimated_weight_kg, 100.0)
+        self.assertLess(result.estimated_weight_kg, 500.0)
+        self.assertGreater(result.mask_area_percentage, 10.0)
+        self.assertLess(result.mask_area_percentage, 60.0)
+        self.assertGreater(result.inference_time_ms, 0)
+        self.assertTrue(result.mask_base64.startswith('data:image/png;base64,'))
+        self.assertTrue(result.overlay_base64.startswith('data:image/png;base64,'))
+
+
+class BovineAnalysisAPITestCase(TestCase):
+    """
+    Testes de integração para o endpoint REST POST /api/v1/cattle/analyze/.
+    """
+
+    def setUp(self):
+        """Inicializa o cliente de testes da API REST."""
+        self.client = APIClient()
+        self.url = reverse('core:cattle-analyze')
+
+    def test_api_missing_image_payload(self):
+        """Verifica se uma requisição sem campo 'image' retorna erro HTTP 400 Bad Request."""
+        response = self.client.post(self.url, data={}, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('image', response.data)
+
+    def test_api_invalid_file_type(self):
+        """Verifica se o envio de um arquivo de texto retorna erro HTTP 400 Bad Request."""
+        text_file = SimpleUploadedFile(
+            name='doc.txt',
+            content=b'arquivo texto invalido',
+            content_type='text/plain'
+        )
+        response = self.client.post(self.url, data={'image': text_file}, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_api_successful_analysis(self):
+        """
+        Verifica o fluxo completo de upload via API com a foto boi1.png.
+        Garante status HTTP 201 Created, persistência no banco e retorno com Base64.
+        """
+        base_dir = Path(__file__).resolve().parent.parent
+        image_path = base_dir / 'boi1.png'
+
+        if not image_path.exists():
+            self.skipTest("Arquivo boi1.png não encontrado para teste de API.")
+
+        with open(image_path, 'rb') as img_file:
+            uploaded_file = SimpleUploadedFile(
+                name='boi1.png',
+                content=img_file.read(),
+                content_type='image/png'
+            )
+            response = self.client.post(
+                self.url,
+                data={'image': uploaded_file},
+                format='multipart'
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn('id', response.data)
+        self.assertIn('uuid', response.data)
+        self.assertIn('estimated_weight', response.data)
+        self.assertIn('mask_area_percentage', response.data)
+        self.assertIn('mask_base64', response.data)
+        self.assertIn('overlay_base64', response.data)
+        self.assertTrue(response.data['mask_base64'].startswith('data:image/png;base64,'))
+
+        # Confirma gravação no banco de dados
+        analysis_id = response.data['id']
+        db_obj = BovineAnalysis.objects.get(id=analysis_id)
+        self.assertTrue(db_obj.is_processed)
+        self.assertGreater(float(db_obj.estimated_weight), 100.0)
