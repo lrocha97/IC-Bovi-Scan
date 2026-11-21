@@ -52,7 +52,7 @@ IC-Bovi-Scan/
 │   ├── api_views.py         # Endpoints da API REST
 │   ├── models.py            # Entidade de persistência (BovineAnalysis)
 │   ├── serializers.py       # Serializadores do Django REST Framework (Swagger Binary)
-│   ├── tests.py             # Suíte completa de testes automatizados (10 testes)
+│   ├── tests.py             # Suíte completa de testes automatizados (16 testes)
 │   ├── urls.py              # Rotas internas do app core
 │   └── views.py             # Views para renderização de páginas
 ├── media/                   # Diretório de armazenamento de uploads e máscaras (ignorado no git)
@@ -188,7 +188,7 @@ Acesse pelo navegador:
 
 ## Execução dos Testes Automatizados
 
-O projeto conta com uma suíte de 10 testes automatizados cobrindo persistência no banco, pré-processamento de imagem, inferência de IA com modelo real e integração da API REST:
+O projeto conta com uma suíte de 16 testes automatizados cobrindo persistência no banco, pré-processamento de imagem, inferência de IA com modelo real, integração da API REST, controle de acesso e interpretação de DATABASE_URL:
 ```bash
 python manage.py test
 ```
@@ -214,7 +214,7 @@ python manage.py test
 - [x] **Passo 4: Endpoint REST e Documentação Interativa (Swagger)**
   - Criação do endpoint `POST /api/v1/cattle/analyze/` ([core/api_views.py](core/api_views.py)).
   - Serialização completa com suporte a upload multipart (`format: binary`), persistência no banco e retorno com imagens em Base64 e URLs de mídia.
-  - Testes de integração via `APIClient` e validação do esquema OpenAPI 3.0.3 (10 testes executados com status `OK`).
+  - Testes de integração via `APIClient` e validação do esquema OpenAPI 3.0.3 (16 testes executados com status `OK`).
 - [x] **Passo 5: Conclusão, Ajustes Finais e Documentação de Uso**
   - Documentação completa da API com exemplos práticos (cURL e JSON).
   - Guia de utilização do Swagger UI e visualização de miniaturas no Django Admin.

@@ -67,34 +67,62 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 # Configuração de Banco de Dados
-# Padrão: SQLite local. Suporta PostgreSQL ou MySQL se DATABASE_URL estiver presente no .env
-DATABASE_URL = config('DATABASE_URL', default=None)
-
-if DATABASE_URL:
+def parse_database_url(url_string, base_dir=None):
+    """
+    Interpreta uma DATABASE_URL e retorna o dicionario de configuracao para o Django DATABASES.
+    Valida esquemas suportados e preserva barras iniciais em caminhos absolutos SQLite.
+    """
+    import re
     from urllib.parse import urlparse
-    parsed_db_url = urlparse(DATABASE_URL)
+
     engine_map = {
         'postgres': 'django.db.backends.postgresql',
         'postgresql': 'django.db.backends.postgresql',
         'mysql': 'django.db.backends.mysql',
         'sqlite': 'django.db.backends.sqlite3',
     }
-    scheme = (parsed_db_url.scheme or '').lower()
+    parsed = urlparse(url_string)
+    scheme = (parsed.scheme or '').lower()
     if scheme not in engine_map:
         raise ValueError(
             f"Esquema de banco de dados não suportado na DATABASE_URL: '{scheme}'. "
             f"Esquemas válidos são: {', '.join(sorted(engine_map.keys()))}."
         )
 
+    if scheme == 'sqlite':
+        raw_path = parsed.path or ''
+        if raw_path in ('/:memory:', ':memory:'):
+            db_name = ':memory:'
+        elif raw_path.startswith('//'):
+            # Preserva a barra inicial para caminhos absolutos Unix (ex: sqlite:////tmp/boviscan.sqlite3 -> /tmp/boviscan.sqlite3)
+            db_name = raw_path[1:]
+        elif re.match(r'^/[a-zA-Z]:', raw_path):
+            # Caminho absoluto Windows com letra de unidade (ex: sqlite:///C:/data/db.sqlite3 -> C:/data/db.sqlite3)
+            db_name = raw_path[1:]
+        elif raw_path:
+            # Caminho relativo (ex: sqlite:///db.sqlite3 -> db.sqlite3)
+            db_name = raw_path.lstrip('/')
+        else:
+            db_name = str((base_dir / 'db.sqlite3') if base_dir else 'db.sqlite3')
+    else:
+        db_name = parsed.path.lstrip('/') if parsed.path else ''
+
+    return {
+        'ENGINE': engine_map[scheme],
+        'NAME': db_name,
+        'USER': parsed.username or '',
+        'PASSWORD': parsed.password or '',
+        'HOST': parsed.hostname or '',
+        'PORT': parsed.port or '',
+    }
+
+
+# Padrão: SQLite local. Suporta PostgreSQL ou MySQL se DATABASE_URL estiver presente no .env
+DATABASE_URL = config('DATABASE_URL', default=None)
+
+if DATABASE_URL:
     DATABASES = {
-        'default': {
-            'ENGINE': engine_map[scheme],
-            'NAME': parsed_db_url.path.lstrip('/') if parsed_db_url.path else '',
-            'USER': parsed_db_url.username or '',
-            'PASSWORD': parsed_db_url.password or '',
-            'HOST': parsed_db_url.hostname or '',
-            'PORT': parsed_db_url.port or '',
-        }
+        'default': parse_database_url(DATABASE_URL, base_dir=BASE_DIR)
     }
 else:
     DATABASES = {
@@ -132,17 +160,41 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Django REST Framework & Documentação OpenAPI
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+    ],
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
         'anon': '20/minute',
+        'user': '120/minute',
     },
 }
 
 # Políticas de Segurança e Limites de Recursos para Inferência
 MAX_IMAGE_UPLOAD_SIZE = 10 * 1024 * 1024  # Limite máximo de 10 MB por upload
-REQUIRE_AUTH_FOR_INFERENCE = config('REQUIRE_AUTH_FOR_INFERENCE', default=False, cast=bool)
+
+# Autenticação no endpoint de inferência:
+# Padrão seguro (production-ready): Autenticação obrigatória (REQUIRE_AUTH_FOR_INFERENCE = True).
+# Em produção (DEBUG=False), a autenticação é estritamente obrigatória para proteger recursos de hardware e disco.
+# Em desenvolvimento local (DEBUG=True), permite opt-out explícito definindo ALLOW_ANONYMOUS_INFERENCE=True no .env.
+ALLOW_ANONYMOUS_INFERENCE = config('ALLOW_ANONYMOUS_INFERENCE', default=None)
+if ALLOW_ANONYMOUS_INFERENCE is not None:
+    opt_out_anonymous = config('ALLOW_ANONYMOUS_INFERENCE', cast=bool)
+else:
+    # Retrocompatibilidade caso o desenvolvedor utilize REQUIRE_AUTH_FOR_INFERENCE no .env
+    req_auth_env = config('REQUIRE_AUTH_FOR_INFERENCE', default=None)
+    opt_out_anonymous = (not config('REQUIRE_AUTH_FOR_INFERENCE', cast=bool)) if req_auth_env is not None else False
+
+if not DEBUG:
+    # Em produção, a autenticação é sempre obrigatória por padrão seguro
+    REQUIRE_AUTH_FOR_INFERENCE = True
+else:
+    # Em desenvolvimento (DEBUG=True), respeita o opt-out explícito
+    REQUIRE_AUTH_FOR_INFERENCE = not opt_out_anonymous
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'BoviScan API',

@@ -12,10 +12,11 @@ from django.conf import settings
 from django.core.files.base import ContentFile
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
+from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.throttling import AnonRateThrottle
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
 
 from .models import BovineAnalysis
@@ -37,17 +38,19 @@ class BovineAnalysisAPIView(APIView):
     persiste os dados e imagens no banco e responde com JSON estruturado.
     """
 
+    authentication_classes = [BasicAuthentication, SessionAuthentication]
     parser_classes = [MultiPartParser]
-    throttle_classes = [AnonRateThrottle]
+    throttle_classes = [AnonRateThrottle, UserRateThrottle]
 
     def get_permissions(self):
         """
         Retorna as classes de permissão ativas para o endpoint de inferência.
 
-        Permite acesso público por padrão para ambiente de desenvolvimento/pesquisa da IC.
-        Exige autenticação (IsAuthenticated) caso REQUIRE_AUTH_FOR_INFERENCE=True no .env.
+        Por padrão seguro (REQUIRE_AUTH_FOR_INFERENCE=True), exige autenticação (IsAuthenticated).
+        Permite acesso público (AllowAny) exclusivamente se houver opt-out explícito
+        em ambiente de desenvolvimento local (DEBUG=True).
         """
-        if getattr(settings, 'REQUIRE_AUTH_FOR_INFERENCE', False):
+        if getattr(settings, 'REQUIRE_AUTH_FOR_INFERENCE', True):
             return [IsAuthenticated()]
         return [AllowAny()]
 
@@ -66,6 +69,9 @@ class BovineAnalysisAPIView(APIView):
             status.HTTP_201_CREATED: BovineAnalysisResponseSerializer,
             status.HTTP_400_BAD_REQUEST: OpenApiResponse(
                 description="Dados inválidos ou imagem corrompida/incompatível."
+            ),
+            status.HTTP_401_UNAUTHORIZED: OpenApiResponse(
+                description="Autenticação obrigatória (Session ou Basic Auth)."
             ),
             status.HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(
                 description="Erro interno durante a inferência dos modelos de IA."

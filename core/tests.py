@@ -8,14 +8,16 @@ processamento de imagens, pipeline de inferência de IA e endpoints da API REST.
 import io
 from decimal import Decimal
 from pathlib import Path
+from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 import numpy as np
 from PIL import Image
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from config.settings import parse_database_url
 from .models import BovineAnalysis
 from .services.image_processor import ImageProcessor
 from .services.inference_service import BovineInferenceService
@@ -172,9 +174,30 @@ class BovineAnalysisAPITestCase(TestCase):
     """
 
     def setUp(self):
-        """Inicializa o cliente de testes da API REST."""
+        """Inicializa usuário autenticado e cliente de testes da API REST."""
+        self.user_model = get_user_model()
+        self.test_user = self.user_model.objects.create_user(
+            username='testresearcher',
+            password='testpassword123'
+        )
         self.client = APIClient()
+        self.client.force_authenticate(user=self.test_user)
         self.url = reverse('core:cattle-analyze')
+
+    @override_settings(REQUIRE_AUTH_FOR_INFERENCE=True)
+    def test_api_unauthenticated_request_rejected_when_auth_required(self):
+        """Verifica se requisição anônima retorna HTTP 401 Unauthorized quando autenticação é exigida."""
+        anon_client = APIClient()
+        response = anon_client.post(self.url, data={}, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    @override_settings(REQUIRE_AUTH_FOR_INFERENCE=False)
+    def test_api_unauthenticated_request_allowed_with_opt_out(self):
+        """Verifica se requisição anônima é aceita quando há opt-out de desenvolvimento (retorna 400 por payload vazio)."""
+        anon_client = APIClient()
+        response = anon_client.post(self.url, data={}, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('image', response.data)
 
     def test_api_missing_image_payload(self):
         """Verifica se uma requisição sem campo 'image' retorna erro HTTP 400 Bad Request."""
@@ -242,3 +265,34 @@ class BovineAnalysisAPITestCase(TestCase):
         db_obj = BovineAnalysis.objects.get(id=analysis_id)
         self.assertTrue(db_obj.is_processed)
         self.assertGreater(float(db_obj.estimated_weight), 100.0)
+
+
+class DatabaseUrlParsingTestCase(TestCase):
+    """
+    Testes unitários para a interpretação e validação de DATABASE_URL em settings.
+    Garante o tratamento correto de caminhos absolutos SQLite e rejeição de esquemas inválidos.
+    """
+
+    def test_sqlite_unix_absolute_path_preserves_slash(self):
+        """Verifica se URLs SQLite absolutas no Unix preservam a barra inicial (/tmp/...)."""
+        conf = parse_database_url('sqlite:////tmp/boviscan.sqlite3')
+        self.assertEqual(conf['ENGINE'], 'django.db.backends.sqlite3')
+        self.assertEqual(conf['NAME'], '/tmp/boviscan.sqlite3')
+
+    def test_sqlite_relative_path(self):
+        """Verifica se URLs SQLite relativas removem as barras excedentes."""
+        conf = parse_database_url('sqlite:///db.sqlite3')
+        self.assertEqual(conf['ENGINE'], 'django.db.backends.sqlite3')
+        self.assertEqual(conf['NAME'], 'db.sqlite3')
+
+    def test_sqlite_memory(self):
+        """Verifica se URLs SQLite in-memory retornam ':memory:'."""
+        conf = parse_database_url('sqlite:///:memory:')
+        self.assertEqual(conf['ENGINE'], 'django.db.backends.sqlite3')
+        self.assertEqual(conf['NAME'], ':memory:')
+
+    def test_unsupported_database_scheme_raises_value_error(self):
+        """Verifica se esquemas não suportados disparam ValueError com mensagem explicativa."""
+        with self.assertRaises(ValueError) as ctx:
+            parse_database_url('oracle://user:pass@localhost:1521/orcl')
+        self.assertIn("Esquema de banco de dados não suportado", str(ctx.exception))
