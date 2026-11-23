@@ -1,0 +1,157 @@
+{% load static %}<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="BoviScan - análise de informações biométricas de bovinos por imagem.">
+    <title>BoviScan</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            color: #f1f5ec;
+            background: radial-gradient(circle at 20% 20%, #2f5d3a 0%, #14281a 60%, #0b150e 100%);
+        }
+        main {
+            width: 100%;
+            max-width: 720px;
+            text-align: center;
+            padding: 2.5rem;
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+        }
+        h1 {
+            font-size: 3.5rem;
+            letter-spacing: 1px;
+            background: linear-gradient(90deg, #a8e063, #56ab2f);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .subtitulo { margin-top: 0.5rem; color: #c5d3bd; }
+        section { margin-top: 2rem; }
+        .oculto { display: none !important; }
+
+        .upload {
+            display: block;
+            padding: 2.5rem 1rem;
+            border: 2px dashed rgba(168, 224, 99, 0.5);
+            border-radius: 16px;
+            cursor: pointer;
+            transition: background .2s, border-color .2s, transform .2s;
+        }
+        .upload:hover { background: rgba(168, 224, 99, 0.08); border-color: #a8e063; transform: translateY(-2px); }
+        .upload input { display: none; }
+        .upload strong { display: block; font-size: 1.1rem; }
+        .upload span { color: #c5d3bd; font-size: .9rem; }
+
+        .preview { max-width: 100%; max-height: 320px; border-radius: 14px; margin-top: 1rem; }
+
+        .loader {
+            width: 56px; height: 56px; margin: 0 auto 1rem;
+            border: 5px solid rgba(255, 255, 255, 0.15);
+            border-top-color: #a8e063;
+            border-radius: 50%;
+            animation: giro 0.9s linear infinite;
+        }
+        @keyframes giro { to { transform: rotate(360deg); } }
+        .barra { height: 6px; border-radius: 3px; background: rgba(255,255,255,.12); overflow: hidden; margin-top: 1rem; }
+        .barra div { height: 100%; width: 0; background: linear-gradient(90deg, #a8e063, #56ab2f); animation: carregar 3.5s ease-in-out forwards; }
+        @keyframes carregar { to { width: 100%; } }
+
+        .resultado h2 { font-size: 1.4rem; color: #a8e063; }
+        .resultado img { max-width: 100%; max-height: 320px; border-radius: 14px; margin-top: 1rem; animation: aparecer .6s ease; }
+        @keyframes aparecer { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+        .dados { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .75rem; margin-top: 1.5rem; }
+        .dado { padding: 1rem; border-radius: 14px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); }
+        .dado small { display: block; color: #c5d3bd; margin-bottom: .25rem; }
+        .dado b { font-size: 1.4rem; }
+        .dado.destaque b { color: #a8e063; font-size: 1.8rem; }
+
+        button {
+            margin-top: 1.5rem; padding: .75rem 1.75rem; border: 0; border-radius: 999px;
+            font-size: 1rem; font-weight: 600; cursor: pointer; color: #0b150e;
+            background: linear-gradient(90deg, #a8e063, #56ab2f);
+            transition: transform .2s, box-shadow .2s;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(86,171,47,.4); }
+    </style>
+</head>
+<body>
+    <main>
+        <h1 id="titulo">BoviScan</h1>
+        <p class="subtitulo">Análise biométrica de bovinos por imagem</p>
+
+        <!-- Etapa 1: upload -->
+        <section id="etapa-upload">
+            <label class="upload" for="arquivo">
+                <strong>Clique para enviar a imagem do bovino</strong>
+                <span>PNG ou JPG (ex.: boi1.png)</span>
+                <input type="file" id="arquivo" accept="image/*">
+            </label>
+        </section>
+
+        <!-- Etapa 2: carregamento -->
+        <section id="etapa-loading" class="oculto">
+            <div class="loader"></div>
+            <p>Analisando imagem com IA...</p>
+            <div class="barra"><div></div></div>
+            <img id="preview" class="preview" alt="Imagem enviada" src="{% static 'core/boi1.png' %}">
+        </section>
+
+        <!-- Etapa 3: resultado -->
+        <section id="etapa-resultado" class="resultado oculto">
+            <h2 id="titulo-mascara">Máscara de IA (área: 26,3%)</h2>
+            <img src="{% static 'core/boi2.png' %}" alt="Máscara de IA do bovino">
+            <div class="dados">
+                <div class="dado destaque"><small>Peso estimado</small><b id="peso">226.0 kg</b></div>
+                <div class="dado"><small>Área da máscara</small><b>26,3%</b></div>
+                <div class="dado"><small>Confiança</small><b>94%</b></div>
+            </div>
+            <button type="button" id="novo">Analisar outra imagem</button>
+        </section>
+    </main>
+
+    <script>
+        const etapas = {
+            upload: document.getElementById('etapa-upload'),
+            loading: document.getElementById('etapa-loading'),
+            resultado: document.getElementById('etapa-resultado'),
+        };
+        const input = document.getElementById('arquivo');
+        const preview = document.getElementById('preview');
+        let urlTemporaria = null;
+
+        function mostrar(nome) {
+            Object.entries(etapas).forEach(([k, el]) => el.classList.toggle('oculto', k !== nome));
+        }
+
+        input.addEventListener('change', () => {
+            const arquivo = input.files[0];
+            if (!arquivo) return;
+            // Mockup: exibe a imagem enviada e simula o processamento
+            if (urlTemporaria) URL.revokeObjectURL(urlTemporaria);
+            urlTemporaria = URL.createObjectURL(arquivo);
+            preview.src = urlTemporaria;
+            mostrar('loading');
+            // reinicia a animação da barra
+            const barra = etapas.loading.querySelector('.barra div');
+            barra.style.animation = 'none'; barra.offsetWidth; barra.style.animation = '';
+            setTimeout(() => mostrar('resultado'), 3500);
+        });
+
+        document.getElementById('novo').addEventListener('click', () => {
+            input.value = '';
+            mostrar('upload');
+        });
+    </script>
+</body>
+</html>
