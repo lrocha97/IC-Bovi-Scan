@@ -1,0 +1,18 @@
+# Core Framework & API
+Django>=4.2.0,<5.0.0
+djangorestframework>=3.15.0
+drf-spectacular>=0.27.0
+python-decouple>=3.8
+
+# Image Processing & Mathematics
+pillow>=10.0.0
+numpy>=1.26.0,<3.0.0
+opencv-python-headless>=4.10.0
+
+# Deep Learning & AI Models (Keras 3)
+keras>=3.13.2
+tensorflow>=2.16.0
+
+# Optional Database & Storage connectors
+asgiref>=3.8.0
+sqlparse>=0.5.0
