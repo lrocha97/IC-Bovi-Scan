@@ -10,6 +10,40 @@ import uuid
 from django.db import models
 
 
+class Bovine(models.Model):
+    """
+    Representa um bovino identificado pelo usuário através de um nome.
+
+    Cada nova análise enviada com o mesmo nome (sem diferenciar maiúsculas de
+    minúsculas) é associada ao mesmo animal, formando o histórico de pesagens.
+    """
+
+    uuid = models.UUIDField(
+        default=uuid.uuid4,
+        editable=False,
+        unique=True,
+        verbose_name="Identificador Único (UUID)"
+    )
+
+    name = models.CharField(
+        max_length=100,
+        unique=True,
+        verbose_name="Nome",
+        help_text="Nome utilizado para identificar o bovino."
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Data de Cadastro")
+
+    class Meta:
+        verbose_name = "Bovino"
+        verbose_name_plural = "Bovinos"
+        ordering = ['name']
+
+    def __str__(self):
+        """Retorna o nome do bovino."""
+        return self.name
+
+
 class BovineAnalysis(models.Model):
     """
     Representa uma análise biométrica completa de um bovino.
@@ -30,6 +64,16 @@ class BovineAnalysis(models.Model):
         unique=True,
         verbose_name="Identificador Único (UUID)",
         help_text="Identificador público único utilizado para consultas via API."
+    )
+
+    bovine = models.ForeignKey(
+        Bovine,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='analyses',
+        verbose_name="Bovino",
+        help_text="Bovino identificado ao qual esta análise pertence."
     )
 
     original_image = models.ImageField(

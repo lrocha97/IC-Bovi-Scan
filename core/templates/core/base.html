@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="BoviScan - análise de informações biométricas de bovinos por imagem.">
+    <title>{% block title %}BoviScan{% endblock %}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            color: #f1f5ec;
+            background: radial-gradient(circle at 20% 20%, #2f5d3a 0%, #14281a 60%, #0b150e 100%);
+        }
+        main {
+            width: 100%;
+            max-width: 720px;
+            text-align: center;
+            padding: 2.5rem;
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+        }
+        h1 {
+            font-size: 3.5rem;
+            letter-spacing: 1px;
+            background: linear-gradient(90deg, #a8e063, #56ab2f);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        h1 a { text-decoration: none; color: inherit; }
+        .subtitulo { margin-top: 0.5rem; color: #c5d3bd; }
+        nav { margin-top: 1rem; }
+        nav a { color: #a8e063; text-decoration: none; margin: 0 .75rem; font-weight: 600; }
+        nav a:hover { text-decoration: underline; }
+        section { margin-top: 2rem; }
+
+        .resultado h2 { font-size: 1.4rem; color: #a8e063; }
+        .resultado img { max-width: 100%; max-height: 320px; border-radius: 14px; margin-top: 1rem; }
+        .dados { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .75rem; margin-top: 1.5rem; }
+        .dado { padding: 1rem; border-radius: 14px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); }
+        .dado small { display: block; color: #c5d3bd; margin-bottom: .25rem; }
+        .dado b { font-size: 1.4rem; }
+        .dado.destaque b { color: #a8e063; font-size: 1.8rem; }
+
+        .btn {
+            display: inline-block; margin-top: 1.5rem; padding: .75rem 1.75rem; border: 0; border-radius: 999px;
+            font-size: 1rem; font-weight: 600; cursor: pointer; color: #0b150e; text-decoration: none;
+            background: linear-gradient(90deg, #a8e063, #56ab2f);
+            transition: transform .2s, box-shadow .2s;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(86,171,47,.4); }
+        {% block extra_css %}{% endblock %}
+    </style>
+</head>
+<body>
+    <main>
+        <h1 id="titulo"><a href="{% url 'core:index' %}">BoviScan</a></h1>
+        <p class="subtitulo">Análise biométrica de bovinos por imagem</p>
+        <nav>
+            <a href="{% url 'core:index' %}">Nova análise</a>
+            <a href="{% url 'core:dashboard' %}">Dashboard</a>
+        </nav>
+        {% block content %}{% endblock %}
+    </main>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

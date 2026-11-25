@@ -41,6 +41,19 @@ class BovineAnalysisRequestSerializer(serializers.Serializer):
         help_text="Arquivo de imagem do bovino (formatos aceitos: JPEG, PNG, WebP)."
     )
 
+    name = serializers.CharField(
+        required=True,
+        max_length=100,
+        help_text="Nome para identificar o bovino. Reutilizar o nome acrescenta a análise ao histórico do mesmo animal."
+    )
+
+    def validate_name(self, value):
+        """Normaliza espaços repetidos e rejeita nomes vazios."""
+        cleaned = ' '.join(value.split())
+        if not cleaned:
+            raise serializers.ValidationError("Informe um nome para o bovino.")
+        return cleaned
+
 
 class BovineAnalysisResponseSerializer(serializers.ModelSerializer):
     """

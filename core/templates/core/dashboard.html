@@ -1,0 +1,42 @@
+{% extends 'core/base.html' %}
+{% block title %}Dashboard - BoviScan{% endblock %}
+
+{% block extra_css %}
+.lista { list-style: none; margin-top: 1rem; text-align: left; }
+.lista li + li { margin-top: .75rem; }
+.item {
+    display: flex; align-items: center; gap: 1rem; padding: .75rem 1rem;
+    border-radius: 14px; text-decoration: none; color: inherit;
+    background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1);
+    transition: background .2s, transform .2s, border-color .2s;
+}
+.item:hover { background: rgba(168,224,99,.1); border-color: #a8e063; transform: translateX(4px); }
+.item img { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; }
+.item .info { flex: 1; }
+.item .info b { display: block; font-size: 1.1rem; }
+.item .info small { color: #c5d3bd; }
+.item .peso { font-weight: 700; color: #a8e063; font-size: 1.2rem; text-align: right; }
+.item .peso small { display: block; font-weight: 400; color: #c5d3bd; font-size: .75rem; }
+{% endblock %}
+
+{% block content %}
+<section>
+    <h2 style="color:#a8e063">Bovinos identificados</h2>
+    <ul class="lista" id="lista-bovinos">
+        {% for i in items %}
+        <li>
+            <a class="item" href="{% url 'core:bovine-detail' i.bovine.uuid %}">
+                <img src="{{ i.latest.original_image.url }}" alt="{{ i.bovine.name }}">
+                <span class="info">
+                    <b>{{ i.bovine.name }}</b>
+                    <small>{{ i.count }} pesage{{ i.count|pluralize:"m,ns" }} · última em {{ i.latest.created_at|date:"d/m/Y H:i" }}</small>
+                </span>
+                <span class="peso">{{ i.latest.estimated_weight|floatformat:1 }} kg<small>último peso</small></span>
+            </a>
+        </li>
+        {% empty %}
+        <li class="subtitulo">Nenhum bovino identificado ainda. <a href="{% url 'core:index' %}" style="color:#a8e063">Envie uma imagem</a>.</li>
+        {% endfor %}
+    </ul>
+</section>
+{% endblock %}
