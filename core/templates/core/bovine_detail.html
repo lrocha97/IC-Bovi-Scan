@@ -1,0 +1,92 @@
+{% extends 'core/base.html' %}
+{% block title %}{{ bovine.name }} - BoviScan{% endblock %}
+
+{% block extra_css %}
+.grafico { margin-top: 1rem; padding: 1rem; border-radius: 14px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); }
+.grafico svg { width: 100%; height: auto; display: block; }
+.grafico .vazio { color: #c5d3bd; padding: 1rem; }
+.galeria { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; margin-top: 1rem; }
+.foto { padding: .75rem; border-radius: 14px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); }
+.foto .par { display: flex; gap: .4rem; }
+.foto .par img { width: 50%; height: 90px; object-fit: cover; border-radius: 8px; background: #000; }
+.foto b { display: block; margin-top: .5rem; color: #a8e063; font-size: 1.2rem; }
+.foto small { color: #c5d3bd; }
+.resumo { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem; }
+{% endblock %}
+
+{% block content %}
+<section class="resultado">
+    <h2 id="nome-bovino" style="font-size:2rem">{{ bovine.name }}</h2>
+    <p class="subtitulo">{{ analyses|length }} pesage{{ analyses|length|pluralize:"m,ns" }} registrada{{ analyses|length|pluralize }}</p>
+
+    {% if analyses %}
+    <div class="resumo">
+        <div class="dado destaque"><small>Peso atual</small><b>{{ analyses.0.estimated_weight|floatformat:1 }} kg</b></div>
+    </div>
+
+    <h3 style="margin-top:2rem">Evolução do peso</h3>
+    <div class="grafico"><div id="grafico-peso"></div></div>
+
+    <h3 style="margin-top:2rem">Fotos ao longo do tempo</h3>
+    <div class="galeria" id="galeria">
+        {% for a in analyses %}
+        <div class="foto">
+            <div class="par">
+                <img src="{{ a.original_image.url }}" alt="Foto de {{ bovine.name }} em {{ a.created_at|date:'d/m/Y' }}">
+                {% if a.mask_image %}<img src="{{ a.mask_image.url }}" alt="Máscara de IA">{% endif %}
+            </div>
+            <b>{{ a.estimated_weight|floatformat:1 }} kg</b>
+            <small>{{ a.created_at|date:"d/m/Y H:i" }} · área {{ a.mask_area_percentage|floatformat:1 }}%</small>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <a class="btn" href="{% url 'core:dashboard' %}">Voltar ao dashboard</a>
+</section>
+{% endblock %}
+
+{% block scripts %}
+{{ chart_data|json_script:"dados-grafico" }}
+<script>
+(function () {
+    const alvo = document.getElementById('grafico-peso');
+    if (!alvo) return;
+    const dados = JSON.parse(document.getElementById('dados-grafico').textContent);
+    const fmt = (v) => v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+    if (dados.length < 2) {
+        alvo.innerHTML = '<p class="vazio">São necessárias ao menos 2 pesagens para mostrar a evolução. ' +
+            (dados.length ? 'Peso registrado: ' + fmt(dados[0].weight) + ' kg.' : '') + '</p>';
+        return;
+    }
+
+    const W = 640, H = 300, m = { t: 20, r: 20, b: 50, l: 55 };
+    const pesos = dados.map(d => d.weight);
+    let min = Math.min(...pesos), max = Math.max(...pesos);
+    const folga = (max - min) * 0.15 || 5;
+    min -= folga; max += folga;
+    const x = (i) => m.l + (i / (dados.length - 1)) * (W - m.l - m.r);
+    const y = (v) => m.t + (1 - (v - min) / (max - min)) * (H - m.t - m.b);
+
+    let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico da evolução do peso">`;
+    for (let k = 0; k <= 4; k++) {
+        const v = min + (k / 4) * (max - min), yy = y(v);
+        svg += `<line x1="${m.l}" x2="${W - m.r}" y1="${yy}" y2="${yy}" stroke="rgba(255,255,255,.12)"/>` +
+               `<text x="${m.l - 8}" y="${yy + 4}" text-anchor="end" fill="#c5d3bd" font-size="12">${fmt(v)}</text>`;
+    }
+    svg += `<text x="14" y="${H / 2}" fill="#c5d3bd" font-size="12" transform="rotate(-90 14 ${H / 2})" text-anchor="middle">Peso (kg)</text>`;
+    const pontos = dados.map((d, i) => `${x(i)},${y(d.weight)}`).join(' ');
+    svg += `<polyline points="${pontos}" fill="none" stroke="#a8e063" stroke-width="3" stroke-linejoin="round"/>`;
+    dados.forEach((d, i) => {
+        const anchor = i === 0 ? 'start' : (i === dados.length - 1 ? 'end' : 'middle');
+        svg += `<circle cx="${x(i)}" cy="${y(d.weight)}" r="5" fill="#56ab2f" stroke="#fff" stroke-width="1.5"><title>${d.date}: ${fmt(d.weight)} kg</title></circle>` +
+               `<text x="${x(i)}" y="${y(d.weight) - 12}" text-anchor="middle" fill="#f1f5ec" font-size="12">${fmt(d.weight)}</text>` +
+               `<text x="${x(i)}" y="${H - 28}" text-anchor="${anchor}" fill="#c5d3bd" font-size="11">${d.date.split(' ')[0]}</text>` +
+               `<text x="${x(i)}" y="${H - 14}" text-anchor="${anchor}" fill="#c5d3bd" font-size="10">${d.date.split(' ')[1]}</text>`;
+    });
+    svg += '</svg>';
+    alvo.innerHTML = svg;
+})();
+</script>
+{% endblock %}

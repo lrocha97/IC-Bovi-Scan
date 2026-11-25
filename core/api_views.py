@@ -10,6 +10,8 @@ import logging
 from decimal import Decimal
 from django.conf import settings
 from django.core.files.base import ContentFile
+from django.db import transaction
+from django.urls import reverse
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
@@ -19,7 +21,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
 
-from .models import BovineAnalysis
+from .models import Bovine, BovineAnalysis
 from .serializers import (
     BovineAnalysisRequestSerializer,
     BovineAnalysisResponseSerializer,
@@ -88,6 +90,7 @@ class BovineAnalysisAPIView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         image_file = serializer.validated_data['image']
+        bovine_name = serializer.validated_data['name']
 
         try:
             # 1. Executa a pipeline completa de inferência
@@ -100,15 +103,20 @@ class BovineAnalysisAPIView(APIView):
             mask_filename = f"mask_{image_file.name.rsplit('.', 1)[0]}.png"
             mask_content = ContentFile(mask_buffer.getvalue(), name=mask_filename)
 
-            # 3. Persiste a análise no banco de dados
-            analysis = BovineAnalysis.objects.create(
-                original_image=image_file,
-                mask_image=mask_content,
-                estimated_weight=Decimal(str(inference_result.estimated_weight_kg)),
-                mask_area_percentage=inference_result.mask_area_percentage,
-                confidence_score=inference_result.confidence_score,
-                inference_time_ms=inference_result.inference_time_ms
-            )
+            # 3. Identifica o bovino (mesmo nome = mesmo animal) e persiste a análise
+            with transaction.atomic():
+                bovine = Bovine.objects.filter(name__iexact=bovine_name).first()
+                if bovine is None:
+                    bovine = Bovine.objects.create(name=bovine_name)
+                analysis = BovineAnalysis.objects.create(
+                    bovine=bovine,
+                    original_image=image_file,
+                    mask_image=mask_content,
+                    estimated_weight=Decimal(str(inference_result.estimated_weight_kg)),
+                    mask_area_percentage=inference_result.mask_area_percentage,
+                    confidence_score=inference_result.confidence_score,
+                    inference_time_ms=inference_result.inference_time_ms
+                )
 
             # 4. Serializa a resposta combinando dados do banco e imagens Base64
             response_serializer = BovineAnalysisResponseSerializer(analysis)
@@ -116,6 +124,10 @@ class BovineAnalysisAPIView(APIView):
             response_data['mask_base64'] = inference_result.mask_base64
             response_data['overlay_base64'] = inference_result.overlay_base64
             response_data['device_used'] = inference_result.device_used
+            response_data['bovine_name'] = bovine.name
+            response_data['bovine_uuid'] = str(bovine.uuid)
+            response_data['bovine_url'] = reverse('core:bovine-detail', args=[bovine.uuid])
+            response_data['analyses_count'] = bovine.analyses.count()
 
             return Response(response_data, status=status.HTTP_201_CREATED)
 

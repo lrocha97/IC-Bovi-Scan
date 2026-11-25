@@ -205,6 +205,13 @@ class BovineAnalysisAPITestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('image', response.data)
 
+    def test_api_missing_bovine_name(self):
+        """Verifica se o nome do bovino é obrigatório."""
+        image = SimpleUploadedFile('a.png', b'x', content_type='image/png')
+        response = self.client.post(self.url, data={'image': image}, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('name', response.data)
+
     def test_api_invalid_file_type(self):
         """Verifica se o envio de um arquivo de texto retorna erro HTTP 400 Bad Request."""
         text_file = SimpleUploadedFile(
@@ -247,11 +254,13 @@ class BovineAnalysisAPITestCase(TestCase):
             )
             response = self.client.post(
                 self.url,
-                data={'image': uploaded_file},
+                data={'image': uploaded_file, 'name': 'Mimosa'},
                 format='multipart'
             )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['bovine_name'], 'Mimosa')
+        self.assertEqual(response.data['analyses_count'], 1)
         self.assertIn('id', response.data)
         self.assertIn('uuid', response.data)
         self.assertIn('estimated_weight', response.data)
@@ -296,3 +305,67 @@ class DatabaseUrlParsingTestCase(TestCase):
         with self.assertRaises(ValueError) as ctx:
             parse_database_url('oracle://user:pass@localhost:1521/orcl')
         self.assertIn("Esquema de banco de dados não suportado", str(ctx.exception))
+
+
+class BovineHistoryViewsTestCase(TestCase):
+    """Testes do dashboard por bovino e da página de histórico com gráfico de peso."""
+
+    def setUp(self):
+        import tempfile
+        self._media = tempfile.TemporaryDirectory()
+        self.addCleanup(self._media.cleanup)
+        self._override = override_settings(MEDIA_ROOT=self._media.name)
+        self._override.enable()
+        self.addCleanup(self._override.disable)
+
+        self.user = get_user_model().objects.create_user(username='pesquisador', password='senha12345')
+        self.client.force_login(self.user)
+
+        from .models import Bovine
+        self.mimosa = Bovine.objects.create(name='Mimosa')
+        self.estrela = Bovine.objects.create(name='Estrela')
+        for bovine, weight in [(self.mimosa, '200.00'), (self.mimosa, '215.50'), (self.estrela, '300.00')]:
+            self._create_analysis(bovine, weight)
+
+    def _create_analysis(self, bovine, weight):
+        stream = io.BytesIO()
+        Image.new('RGB', (32, 32), color='green').save(stream, format='PNG')
+        return BovineAnalysis.objects.create(
+            bovine=bovine,
+            original_image=SimpleUploadedFile('boi.png', stream.getvalue(), content_type='image/png'),
+            mask_image=SimpleUploadedFile('mask.png', stream.getvalue(), content_type='image/png'),
+            estimated_weight=Decimal(weight),
+            mask_area_percentage=30.0,
+            confidence_score=90.0,
+            inference_time_ms=100,
+        )
+
+    @override_settings(REQUIRE_AUTH_FOR_INFERENCE=True)
+    def test_dashboard_requires_login(self):
+        self.client.logout()
+        response = self.client.get(reverse('core:dashboard'))
+        self.assertEqual(response.status_code, 302)
+
+    def test_dashboard_lists_one_entry_per_bovine(self):
+        response = self.client.get(reverse('core:dashboard'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['items']), 2)
+        names = {i['bovine'].name: i['count'] for i in response.context['items']}
+        self.assertEqual(names, {'Mimosa': 2, 'Estrela': 1})
+        self.assertContains(response, 'Mimosa')
+
+    def test_bovine_detail_shows_history_and_chart_data(self):
+        response = self.client.get(reverse('core:bovine-detail', args=[self.mimosa.uuid]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([p['weight'] for p in response.context['chart_data']], [200.0, 215.5])
+        self.assertEqual(len(response.context['analyses']), 2)
+        self.assertContains(response, 'grafico-peso')
+
+    def test_bovine_detail_not_found(self):
+        import uuid as uuid_lib
+        response = self.client.get(reverse('core:bovine-detail', args=[uuid_lib.uuid4()]))
+        self.assertEqual(response.status_code, 404)
+
+    def test_bovine_name_lookup_is_case_insensitive_in_api_flow(self):
+        from .models import Bovine
+        self.assertEqual(Bovine.objects.filter(name__iexact='mimosa').count(), 1)

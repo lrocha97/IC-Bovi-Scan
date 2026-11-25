@@ -154,6 +154,9 @@ STATICFILES_DIRS = []
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# Redirecionamento de login para as páginas protegidas (histórico de análises)
+LOGIN_URL = '/admin/login/'
+
 # Configuração padrão de chave primária para modelos
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

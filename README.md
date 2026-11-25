@@ -46,7 +46,6 @@ IC-Bovi-Scan/
 │   │   ├── image_processor.py   # Utilitários de imagem, redimensionamento e Base64
 │   │   ├── inference_service.py # Orquestrador da inferência ponta a ponta
 │   │   └── model_loader.py      # Gerenciador Singleton de modelos Keras em memória
-│   ├── static/core/         # Arquivos estáticos (mockup visual)
 │   ├── templates/core/      # Templates HTML (interface gráfica)
 │   ├── admin.py             # Configuração do Django Admin (com visualização de miniaturas)
 │   ├── api_views.py         # Endpoints da API REST

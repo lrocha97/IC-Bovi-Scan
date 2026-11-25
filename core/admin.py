@@ -7,7 +7,16 @@ miniaturas das imagens originais e máscaras geradas, filtrando por data e peso.
 
 from django.contrib import admin
 from django.utils.html import mark_safe
-from .models import BovineAnalysis
+from .models import Bovine, BovineAnalysis
+
+
+@admin.register(Bovine)
+class BovineAdmin(admin.ModelAdmin):
+    """Configuração administrativa para os bovinos identificados."""
+
+    list_display = ('name', 'uuid', 'created_at')
+    search_fields = ('name',)
+    readonly_fields = ('uuid', 'created_at')
 
 
 @admin.register(BovineAnalysis)
@@ -46,6 +55,7 @@ class BovineAnalysisAdmin(admin.ModelAdmin):
 
     fields = (
         'uuid',
+        'bovine',
         'original_image',
         'preview_original_large',
         'mask_image',
