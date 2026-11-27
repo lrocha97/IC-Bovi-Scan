@@ -17,6 +17,17 @@
 .item .info small { color: #c5d3bd; }
 .item .peso { font-weight: 700; color: #a8e063; font-size: 1.2rem; text-align: right; }
 .item .peso small { display: block; font-weight: 400; color: #c5d3bd; font-size: .75rem; }
+.item .info { min-width: 0; }
+.item .info b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item .peso { white-space: nowrap; }
+@media (max-width: 600px) {
+    .item { gap: .65rem; padding: .6rem .7rem; }
+    .item:hover { transform: none; }
+    .item img { width: 56px; height: 56px; flex-shrink: 0; }
+    .item .info b { font-size: 1rem; }
+    .item .info small { font-size: .78rem; }
+    .item .peso { font-size: 1rem; }
+}
 {% endblock %}
 
 {% block content %}

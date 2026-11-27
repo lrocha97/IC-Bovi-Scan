@@ -2,20 +2,27 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#14281a">
     <meta name="description" content="BoviScan - análise de informações biométricas de bovinos por imagem.">
     <title>{% block title %}BoviScan{% endblock %}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
         body {
             min-height: 100vh;
+            min-height: 100dvh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 2rem 1rem;
+            padding-left: max(1rem, env(safe-area-inset-left));
+            padding-right: max(1rem, env(safe-area-inset-right));
+            padding-bottom: max(2rem, env(safe-area-inset-bottom));
             font-family: 'Segoe UI', system-ui, sans-serif;
             color: #f1f5ec;
-            background: radial-gradient(circle at 20% 20%, #2f5d3a 0%, #14281a 60%, #0b150e 100%);
+            background: #14281a radial-gradient(circle at 20% 20%, #2f5d3a 0%, #14281a 60%, #0b150e 100%) fixed;
+            overflow-wrap: anywhere;
         }
         main {
             width: 100%;
@@ -28,9 +35,11 @@
             backdrop-filter: blur(12px);
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
         }
+        img, svg { max-width: 100%; }
         h1 {
             font-size: 3.5rem;
             letter-spacing: 1px;
+            line-height: 1.1;
             background: linear-gradient(90deg, #a8e063, #56ab2f);
             -webkit-background-clip: text;
             background-clip: text;
@@ -38,9 +47,13 @@
         }
         h1 a { text-decoration: none; color: inherit; }
         .subtitulo { margin-top: 0.5rem; color: #c5d3bd; }
-        nav { margin-top: 1rem; }
-        nav a { color: #a8e063; text-decoration: none; margin: 0 .75rem; font-weight: 600; }
-        nav a:hover { text-decoration: underline; }
+        nav { margin-top: 1rem; display: flex; justify-content: center; flex-wrap: wrap; gap: .5rem; }
+        nav a {
+            color: #a8e063; text-decoration: none; font-weight: 600;
+            padding: .6rem 1rem; min-height: 44px; display: inline-flex; align-items: center;
+            border-radius: 999px; border: 1px solid rgba(168,224,99,.35);
+        }
+        nav a:hover { background: rgba(168,224,99,.12); }
         section { margin-top: 2rem; }
 
         .resultado h2 { font-size: 1.4rem; color: #a8e063; }
@@ -52,12 +65,32 @@
         .dado.destaque b { color: #a8e063; font-size: 1.8rem; }
 
         .btn {
-            display: inline-block; margin-top: 1.5rem; padding: .75rem 1.75rem; border: 0; border-radius: 999px;
+            display: inline-block; margin-top: 1.5rem; padding: .85rem 1.75rem; min-height: 48px; border: 0; border-radius: 999px;
             font-size: 1rem; font-weight: 600; cursor: pointer; color: #0b150e; text-decoration: none;
             background: linear-gradient(90deg, #a8e063, #56ab2f);
             transition: transform .2s, box-shadow .2s;
+            touch-action: manipulation;
         }
         .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(86,171,47,.4); }
+
+        /* ---------- Mobile ---------- */
+        @media (max-width: 600px) {
+            body { align-items: center; padding-top: 1rem; padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+            main { padding: 1.25rem 1rem; border-radius: 18px; backdrop-filter: none; background: rgba(255,255,255,.08); }
+            h1 { font-size: 2.4rem; }
+            section { margin-top: 1.5rem; }
+            nav a { flex: 1 1 0; justify-content: center; }
+            .resultado h2 { font-size: 1.2rem; }
+            .dados { grid-template-columns: repeat(2, 1fr); gap: .5rem; margin-top: 1rem; }
+            .dado { padding: .75rem .5rem; }
+            .dado b { font-size: 1.15rem; }
+            .dado.destaque { grid-column: 1 / -1; }
+            .dado.destaque b { font-size: 1.6rem; }
+            .btn { display: block; width: 100%; margin-top: 1rem; }
+        }
+        @media (hover: none) {
+            .btn:hover, nav a:hover { transform: none; box-shadow: none; }
+        }
         {% block extra_css %}{% endblock %}
     </style>
 </head>

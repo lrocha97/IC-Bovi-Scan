@@ -12,6 +12,15 @@
 .foto b { display: block; margin-top: .5rem; color: #a8e063; font-size: 1.2rem; }
 .foto small { color: #c5d3bd; }
 .resumo { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem; }
+@media (max-width: 600px) {
+    #nome-bovino { font-size: 1.6rem !important; }
+    .grafico { padding: .5rem; }
+    .galeria { grid-template-columns: repeat(2, 1fr); gap: .6rem; }
+    .foto { padding: .5rem; }
+    .foto .par img { height: 70px; }
+    .foto b { font-size: 1.05rem; }
+    .foto small { font-size: .75rem; display: block; }
+}
 {% endblock %}
 
 {% block content %}
@@ -61,32 +70,60 @@
         return;
     }
 
-    const W = 640, H = 300, m = { t: 20, r: 20, b: 50, l: 55 };
-    const pesos = dados.map(d => d.weight);
-    let min = Math.min(...pesos), max = Math.max(...pesos);
-    const folga = (max - min) * 0.15 || 5;
-    min -= folga; max += folga;
-    const x = (i) => m.l + (i / (dados.length - 1)) * (W - m.l - m.r);
-    const y = (v) => m.t + (1 - (v - min) / (max - min)) * (H - m.t - m.b);
+    function desenhar() {
+        const W = Math.max(260, Math.floor(alvo.clientWidth)) || 640;
+        const estreito = W < 480;
+        const H = estreito ? 240 : 300;
+        const fs = estreito ? 11 : 12;
+        const m = { t: 22, r: estreito ? 16 : 20, b: 46, l: estreito ? 42 : 55 };
+        const pesos = dados.map(d => d.weight);
+        let min = Math.min(...pesos), max = Math.max(...pesos);
+        const folga = (max - min) * 0.15 || 5;
+        min -= folga; max += folga;
+        const n = dados.length;
+        const x = (i) => m.l + (i / (n - 1)) * (W - m.l - m.r);
+        const y = (v) => m.t + (1 - (v - min) / (max - min)) * (H - m.t - m.b);
+        const passo = (W - m.l - m.r) / (n - 1);
+        // evita sobreposição de rótulos em telas pequenas
+        const stepData = Math.max(1, Math.ceil(n / Math.max(2, Math.floor((W - m.l - m.r) / 52))));
+        const mostrarData = (i) => i === n - 1 || (i % stepData === 0 && (n - 1 - i) >= stepData);
 
-    let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico da evolução do peso">`;
-    for (let k = 0; k <= 4; k++) {
-        const v = min + (k / 4) * (max - min), yy = y(v);
-        svg += `<line x1="${m.l}" x2="${W - m.r}" y1="${yy}" y2="${yy}" stroke="rgba(255,255,255,.12)"/>` +
-               `<text x="${m.l - 8}" y="${yy + 4}" text-anchor="end" fill="#c5d3bd" font-size="12">${fmt(v)}</text>`;
+        let svg = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Gráfico da evolução do peso">`;
+        for (let k = 0; k <= 4; k++) {
+            const v = min + (k / 4) * (max - min), yy = y(v);
+            svg += `<line x1="${m.l}" x2="${W - m.r}" y1="${yy}" y2="${yy}" stroke="rgba(255,255,255,.12)"/>` +
+                   `<text x="${m.l - 6}" y="${yy + 4}" text-anchor="end" fill="#c5d3bd" font-size="${fs}">${fmt(v)}</text>`;
+        }
+        if (!estreito) {
+            svg += `<text x="14" y="${H / 2}" fill="#c5d3bd" font-size="${fs}" transform="rotate(-90 14 ${H / 2})" text-anchor="middle">Peso (kg)</text>`;
+        }
+        const pontos = dados.map((d, i) => `${x(i)},${y(d.weight)}`).join(' ');
+        svg += `<polyline points="${pontos}" fill="none" stroke="#a8e063" stroke-width="3" stroke-linejoin="round"/>`;
+        dados.forEach((d, i) => {
+            const anchor = i === 0 ? 'start' : (i === n - 1 ? 'end' : 'middle');
+            const [dia, hora] = d.date.split(' ');
+            svg += `<circle cx="${x(i)}" cy="${y(d.weight)}" r="${estreito ? 6 : 5}" fill="#56ab2f" stroke="#fff" stroke-width="1.5"><title>${d.date}: ${fmt(d.weight)} kg</title></circle>`;
+            if (passo >= 38) {
+                svg += `<text x="${x(i)}" y="${y(d.weight) - 12}" text-anchor="middle" fill="#f1f5ec" font-size="${fs}">${fmt(d.weight)}</text>`;
+            }
+            if (mostrarData(i)) {
+                const curto = estreito ? dia.slice(0, 5) : dia;
+                svg += `<text x="${x(i)}" y="${H - 26}" text-anchor="${anchor}" fill="#c5d3bd" font-size="${fs - 1}">${curto}</text>`;
+                if (!estreito) svg += `<text x="${x(i)}" y="${H - 12}" text-anchor="${anchor}" fill="#c5d3bd" font-size="10">${hora}</text>`;
+            }
+        });
+        svg += '</svg>';
+        alvo.innerHTML = svg;
     }
-    svg += `<text x="14" y="${H / 2}" fill="#c5d3bd" font-size="12" transform="rotate(-90 14 ${H / 2})" text-anchor="middle">Peso (kg)</text>`;
-    const pontos = dados.map((d, i) => `${x(i)},${y(d.weight)}`).join(' ');
-    svg += `<polyline points="${pontos}" fill="none" stroke="#a8e063" stroke-width="3" stroke-linejoin="round"/>`;
-    dados.forEach((d, i) => {
-        const anchor = i === 0 ? 'start' : (i === dados.length - 1 ? 'end' : 'middle');
-        svg += `<circle cx="${x(i)}" cy="${y(d.weight)}" r="5" fill="#56ab2f" stroke="#fff" stroke-width="1.5"><title>${d.date}: ${fmt(d.weight)} kg</title></circle>` +
-               `<text x="${x(i)}" y="${y(d.weight) - 12}" text-anchor="middle" fill="#f1f5ec" font-size="12">${fmt(d.weight)}</text>` +
-               `<text x="${x(i)}" y="${H - 28}" text-anchor="${anchor}" fill="#c5d3bd" font-size="11">${d.date.split(' ')[0]}</text>` +
-               `<text x="${x(i)}" y="${H - 14}" text-anchor="${anchor}" fill="#c5d3bd" font-size="10">${d.date.split(' ')[1]}</text>`;
+
+    desenhar();
+    let larguraAnterior = alvo.clientWidth, temporizador;
+    window.addEventListener('resize', () => {
+        clearTimeout(temporizador);
+        temporizador = setTimeout(() => {
+            if (alvo.clientWidth !== larguraAnterior) { larguraAnterior = alvo.clientWidth; desenhar(); }
+        }, 150);
     });
-    svg += '</svg>';
-    alvo.innerHTML = svg;
 })();
 </script>
 {% endblock %}

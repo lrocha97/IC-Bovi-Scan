@@ -4,9 +4,11 @@
 {% block extra_css %}
 .oculto { display: none !important; }
 .upload {
-    display: block; padding: 2.5rem 1rem; border: 2px dashed rgba(168, 224, 99, 0.5);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .5rem;
+    min-height: 180px; padding: 2.5rem 1rem; border: 2px dashed rgba(168, 224, 99, 0.5);
     border-radius: 16px; cursor: pointer; transition: background .2s, border-color .2s, transform .2s;
 }
+.upload .icone { width: 56px; height: 56px; stroke: #a8e063; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; margin-bottom: .25rem; }
 .upload:hover { background: rgba(168, 224, 99, 0.08); border-color: #a8e063; transform: translateY(-2px); }
 .upload input { display: none; }
 .upload strong { display: block; font-size: 1.1rem; }
@@ -26,11 +28,25 @@
 .erro { color: #ffb4a8; }
 .campo-nome {
     margin-top: .5rem; width: 100%; max-width: 360px; padding: .75rem 1rem; border-radius: 12px;
-    border: 1px solid rgba(255,255,255,.25); background: rgba(0,0,0,.25); color: #f1f5ec; font-size: 1rem; text-align: center;
+    border: 1px solid rgba(255,255,255,.25); background: rgba(0,0,0,.25); color: #f1f5ec;
+    font-size: 16px; /* >=16px evita o zoom automático do iOS ao focar o campo */ text-align: center; min-height: 48px;
 }
 .campo-nome:focus { outline: 2px solid #a8e063; }
 .btn-sec { background: transparent; color: #a8e063; border: 1px solid #a8e063; margin-left: .5rem; }
-.link-historico { display: inline-block; margin-top: 1rem; color: #a8e063; font-weight: 600; }
+.link-historico { display: inline-flex; align-items: center; min-height: 44px; margin-top: 1rem; color: #a8e063; font-weight: 600; }
+.upload { -webkit-tap-highlight-color: transparent; }
+@media (max-width: 600px) {
+    /* A moldura acompanha o conteúdo (não estica); body já centraliza na vertical */
+    #form-analise > section { margin-top: .75rem; }
+    nav { margin-top: .6rem; }
+    .upload { min-height: 48vh; min-height: 48dvh; padding: 2rem 1rem; }
+    .upload .icone { width: 72px; height: 72px; }
+    .upload strong { font-size: 1.25rem; }
+    .upload span { font-size: .95rem; }
+    .preview, .resultado img { max-height: 240px; }
+    .imagens figure { flex-basis: 100%; }
+    .btn-sec { margin-left: 0; }
+}
 {% endblock %}
 
 {% block content %}
@@ -40,7 +56,8 @@
     <!-- Etapa 1: upload -->
     <section id="etapa-upload">
         <label class="upload" for="arquivo">
-            <strong>Clique para enviar a imagem do bovino</strong>
+            <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>
+            <strong>Toque para enviar a imagem do bovino</strong>
             <span>JPEG, PNG ou WebP (perfil lateral, até 10 MB)</span>
             <input type="file" id="arquivo" name="image" accept="image/jpeg,image/png,image/webp">
         </label>
